@@ -29,6 +29,18 @@ static Color colors[] = {RED, YELLOW, GREEN, PURPLE, BROWN, PINK, ORANGE, GOLD, 
 static int colors_count = sizeof(colors)/sizeof(*colors);
 
 
+typedef struct {
+    Vector2 pos;
+    Vector2 velocity;
+    float max_lifetime;
+    float lifetime;
+    float radius;
+    Color color;
+} Particle;
+
+static Particle particles[PARTICLES];
+
+
 typedef enum {
     BORN = 0,
     MOVE,
@@ -44,6 +56,7 @@ typedef struct {
     CircleState state;
     float timer;
     Color color;
+    Particle particles[PARTICLES];
 } Circle;
 
 static int circle_radius_max = 50;
@@ -51,18 +64,6 @@ static int circle_radius_min = 15;
 
 static Circle circles[CIRCLES] = {0};
 static bool is_circles_move = true;
-
-
-typedef struct {
-    Vector2 pos;
-    Vector2 velocity;
-    float max_lifetime;
-    float lifetime;
-    float radius;
-    Color color;
-} Particle;
-
-static Particle particles[PARTICLES];
 
 
 static int width;
@@ -101,7 +102,7 @@ void rand_particle(Vector2 pos)
 }
 
 
-void update_particle_pos(int index, float dt)
+void update_particle_pos(Particle particles[PARTICLES], int index, float dt)
 {
     Particle *particle = &particles[index];
 
@@ -121,14 +122,14 @@ void update_particle_pos(int index, float dt)
 }
 
 
-void draw_particles(float dt)
+void draw_particles(Particle particles[PARTICLES], float dt)
 {
     for (int i = 0; i < PARTICLES; ++i) {
         Particle *particle = &particles[i];
         if (particle->lifetime <= 0) continue;
         float value = particle->lifetime / particle->max_lifetime;
         DrawCircleV(particle->pos, particle->radius, ColorAlpha(particle->color, value));
-        update_particle_pos(i, dt);
+        update_particle_pos(particles, i, dt);
         particle->lifetime -= dt;
     }
 }
@@ -157,6 +158,21 @@ void init_circles(void)
     }
 }
 
+void init_circle_particles(int index)
+{
+    Circle *circle = &circles[index]; 
+
+    for (int i = 0; i < PARTICLES; ++i) {
+        Particle *particle = &circle->particles[i];
+        particle->pos = circle->pos;
+        particle->radius = 5 + rand() % 10;
+        particle->lifetime = (float)rand() / (float)RAND_MAX;
+        particle->max_lifetime = particle->lifetime; 
+        particle->velocity.x = -500 + rand() % 1000;
+        particle->velocity.y = -500 + rand() % 1000;
+        particle->color = circle->color; //colors[rand() % colors_count];
+    }
+}
 
 void print_circle(int index) 
 {
@@ -232,6 +248,7 @@ void draw_circle_move(int index, float dt)
         circle->radius += dt*20;
         if (circle->radius > circle_radius_max + 10) {
             circle->state = POP;
+            init_circle_particles(index);
             circle->timer = 0.0f;
         } 
     }
@@ -243,12 +260,13 @@ void draw_circle_move(int index, float dt)
 void draw_circle_pop(int index, float dt) {
     Circle *circle = &circles[index];
     circle->timer += dt;
-    float radius = circle->radius * circle->timer / 0.25f; 
-    DrawRing(circle->pos, radius, circle->radius, 0, 360, 360, ColorAlpha(circle->color, 0.5f));
+    //float radius = circle->radius * circle->timer / 1.0f; 
+    //DrawRing(circle->pos, radius, circle->radius, 0, 360, 360, ColorAlpha(circle->color, 0.5f));
+    draw_particles(circle->particles, dt); 
+
+    //update_circle_pos(index, dt); 
     
-    update_circle_pos(index, dt); 
-    
-    if (circle->timer > 0.25f) {
+    if (circle->timer > 1.0f) {
         rand_circle(index);
         circle->state = VANISH;
     }
@@ -336,7 +354,7 @@ void game_frame(void)
     
     Vector2 mouse_delta = GetMouseDelta();
     if (mouse_delta.x != 0 || mouse_delta.y != 0) rand_particle(mouse); 
-    draw_particles(dt);
+    draw_particles(particles, dt);
    
     if (IsKeyPressed(KEY_SPACE)) {
         is_circles_move = !is_circles_move;
