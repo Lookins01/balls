@@ -24,6 +24,9 @@ int rand(void);
 
 //#define COLLISION
 
+// Settings
+static bool pop_on_collision = true;
+
 
 static Color colors[] = {RED, YELLOW, GREEN, PURPLE, BROWN, PINK, ORANGE, GOLD, BLUE, VIOLET};
 static int colors_count = sizeof(colors)/sizeof(*colors);
@@ -225,13 +228,25 @@ void update_circle_pos(int index, float dt)
 #endif // CHECK_COLLISION
        
     if (x - circle->radius < 0 || x + circle->radius > width) {
-        circle->velocity.x *= -1;
+        if (pop_on_collision) {
+            circle->state = POP;
+            init_circle_particles(index);
+            circle->timer = 0.0f;
+        } else {
+            circle->velocity.x *= -1;
+        }
     } else {
         circle->pos.x = x;
     }
 
     if (y - circle->radius < 0 || y + circle->radius > height) {
-        circle->velocity.y *= -1;
+        if (pop_on_collision) {
+            circle->state = POP;
+            init_circle_particles(index);
+            circle->timer = 0.0f;
+        } else {
+            circle->velocity.y *= -1;
+        }
     } else {
         circle->pos.y = y;
     }
@@ -312,10 +327,13 @@ void procees_slider(int cx, int cy)
 }
 */
 
-/*
-void draw_menu(void) {
-    
+
+void draw_menu(void) 
+{
+    Vector2 mouse = GetMousePosition();
     int x = 10, y = 10;
+    int text_size = 20;
+/*    
     // Draw radius slidebar controls   
     Rectangle max_radius_slider = {x, y, 200, 10};
     int MAX_RADIUS_SLIDEBAR_RADIUS = 6;
@@ -324,8 +342,21 @@ void draw_menu(void) {
     DrawRectangleRec(max_radius_slider, RED);
     DrawCircle(cx, cy, MAX_RADIUS_SLIDEBAR_RADIUS, BLACK); 
     procees_slider(cx, cy);
-}
 */
+    Rectangle pop_on_collision_rec = {x, y, 20, 20};
+    Color color = pop_on_collision ? RED : BLACK;
+    int pop_on_collision_text_x = pop_on_collision_rec.x + 10 + pop_on_collision_rec.width;
+    int pop_on_collision_text_y = pop_on_collision_rec.y + pop_on_collision_rec.height/2 - text_size/2;
+    DrawRectangleRec(pop_on_collision_rec, color);
+    DrawText("Pop on collision", pop_on_collision_text_x, pop_on_collision_text_y, text_size, RED);
+
+    if (CheckCollisionPointRec(mouse, pop_on_collision_rec) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        pop_on_collision = !pop_on_collision;
+    }
+
+    
+}
+
 
 void game_frame(void)
 {
@@ -359,7 +390,7 @@ void game_frame(void)
     if (IsKeyPressed(KEY_SPACE)) {
         is_circles_move = !is_circles_move;
     }
-    //draw_menu();
+    draw_menu();
     EndDrawing();
 }
 
@@ -375,8 +406,8 @@ int main(void)
         SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     #endif
 
-    InitWindow(WIDTH, HEIGHT, "Balls");
-    //InitWindow(0, 0, "Balls");
+    //InitWindow(WIDTH, HEIGHT, "Balls");
+    InitWindow(0, 0, "Balls");
     SetTargetFPS(60);
     width = GetScreenWidth();
     height = GetScreenHeight();

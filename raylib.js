@@ -40,6 +40,8 @@ class RaylibJs {
         this.entryFunction = undefined;
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
+        this.prevMouseButtonState = new Set();
+        this.currentMouseButtonState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.prevMousePosition = {x: 0, y: 0};
         this.currentMousePosition = {x: 0, y: 0};
@@ -84,10 +86,19 @@ class RaylibJs {
             this.prevMousePosition = this.currentMousePosition;
             this.currentMousePosition = {x: e.clientX, y: e.clientY};
         };
+        const mouseDown = (e) => {
+            this.currentMouseButtonState.add(glfwMouseButtonMapping[e.button]);
+        };
+        const mouseUp = (e) => {
+            this.currentMouseButtonState.delete(glfwMouseButtonMapping[e.button]);
+        };
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
         window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
+        window.addEventListener("mousedown", mouseDown);
+        window.addEventListener("mouseup", mouseUp);
+
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
@@ -144,13 +155,33 @@ class RaylibJs {
         return this.CheckCollisionCircles(point_ptr, 0, center_ptr, radius);
     }
 
+    CheckCollisionPointRect(point_ptr, rec_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [point_x, point_y] = new Float32Array(buffer, point_ptr, 2);
+        const [rec_x, rec_y, rec_w, rec_h] = new Float32Array(buffer, rec_ptr, 4);
+
+        var collision = false;
+
+        if ((point_x >= rec_x) && (point_x < (rec_x + rec_width)) && (point_y >= rec_y) && (point_y < (rec_y + rec_height))) collision = true;
+
+        return collision;
+    }
+
     rand() {
         return Math.floor(Math.random() * 2147483647);
     }
 
     InitWindow(width, height, title_ptr) {
-        this.ctx.canvas.width = width;
-        this.ctx.canvas.height = height;
+        if (width === 0) {
+            this.ctx.canvas.width  = window.innerWidth;
+        } else {
+            this.ctx.canvas.width = width;
+        }
+        if (height === 0) { 
+            this.ctx.canvas.height = window.innerHeight;
+        } else { 
+            this.ctx.canvas.height = height;
+        }
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
     }
@@ -182,6 +213,8 @@ class RaylibJs {
 
     EndDrawing() {
         this.prevMousePosition = this.currentMousePosition;
+        this.prevMouseButtonState.clear();
+        this.prevMouseButtonState = new Set(this.currentMouseButtonState);
         this.prevPressedKeyState.clear();
         this.prevPressedKeyState = new Set(this.currentPressedKeyState);
         this.currentMouseWheelMoveState = 0.0;
@@ -271,16 +304,27 @@ class RaylibJs {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
     }
+    
+    IsMouseButtonPressed(key) {
+        return !this.prevMouseButtonState.has(key) && this.currentMouseButtonState.has(key);
+    }
+
+    IsMouseButtonDown(key) {
+        return this.currentMouseButtonState.has(key);
+    }
 
     IsKeyPressed(key) {
         return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
     }
+
     IsKeyDown(key) {
         return this.currentPressedKeyState.has(key);
     }
+
     GetMouseWheelMove() {
       return this.currentMouseWheelMoveState;
     }
+
     IsGestureDetected() {
         return false;
     }
@@ -447,6 +491,12 @@ class RaylibJs {
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
+}
+
+const glfwMouseButtonMapping = {
+    0: 0, // MOUSE_BUTTON_LEFT
+    2: 1, // MOUSE_BUTTON_RIGHT
+    1: 2, // MOUSE_BUTTON_MIDDLE
 }
 
 const glfwKeyMapping = {
