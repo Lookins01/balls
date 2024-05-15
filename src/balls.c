@@ -1,21 +1,25 @@
+#include "raylib.h"
+#include "raymath.h"
+
+#ifndef PLATFORM_WEB
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+#else
+    #define RAND_MAX 2147483647 
+    int rand(void);
+#endif // PLATFORM_WEB
 
-#include "raylib.h"
-#include "raymath.h"
 
-
-#define CIRCLES 25
+#define CIRCLES 50 
 #define PARTICLES 50
 
-#define WIDTH 800
-#define HEIGHT 600
-#define CIRCLE_RADIUS_MAX 25
-#define CIRCLE_RADIUS_MIN 15
+#define WIDTH 1500
+#define HEIGHT 800
 
-#define COLLISION
+//#define COLLISION
+
 
 typedef enum {
     BORN = 0,
@@ -32,6 +36,9 @@ typedef struct {
     CircleState state;
     float timer;
 } Circle;
+
+static int circle_radius_max = 25;
+static int circle_radius_min = 15;
 
 static Circle circles[CIRCLES] = {0};
 static bool is_circles_move = true;
@@ -51,7 +58,7 @@ static int width;
 static int height;
 
 
-void init_particles()
+void init_particles(void)
 {
     for (int i = 0; i < PARTICLES; ++i) {
         particles[i].lifetime = 0.0f;
@@ -59,7 +66,7 @@ void init_particles()
 }
 
 
-int get_free_particle_index()
+int get_free_particle_index(void)
 {
     for (int i = 0; i < PARTICLES; ++i) {
         if (particles[i].lifetime <= 0.0f) return i;
@@ -116,15 +123,15 @@ void draw_particles(float dt)
 
 void rand_circle(int index) 
 {
-    circles[index].radius = CIRCLE_RADIUS_MIN + (rand() % (CIRCLE_RADIUS_MAX - CIRCLE_RADIUS_MIN));
+    circles[index].radius = circle_radius_min + (rand() % (circle_radius_max - circle_radius_min));
     circles[index].pos.x = circles[index].radius + (rand() % (width - (int)circles[index].radius * 2));
     if (circles[index].pos.x + circles[index].radius >= width) 
         circles[index].pos.x = width - circles[index].radius;
     circles[index].pos.y = circles[index].radius + (rand() % (height - (int)circles[index].radius * 2));
     if (circles[index].pos.y + circles[index].radius >= height) 
         circles[index].pos.y = height - circles[index].radius;
-    circles[index].velocity.x = 100 + rand() % 50;
-    circles[index].velocity.y = 100 + rand() % 50;
+    circles[index].velocity.x = -150 + rand() % 300;
+    circles[index].velocity.y = -150 + rand() % 300;
     circles[index].timer = 0.0f;
 }
 
@@ -137,6 +144,13 @@ void init_circles(void)
 }
 
 
+void print_circle(int index) 
+{
+    (void) index;
+    return; 
+}
+
+/*
 void print_circle(int index)
 {
     Circle circle = circles[index];
@@ -146,7 +160,7 @@ void print_circle(int index)
     printf("\t.radius   = %.2f\n", circle.radius);
     printf("}\n");
 }
-
+*/
 
 bool update_circle_collision(int index, float x, float y)
 {
@@ -175,8 +189,9 @@ void update_circle_pos(int index, float dt)
     float y = circle->pos.y + circle->velocity.y*dt;
     
 #ifdef COLLISION 
-    if (update_circle_collision(index, x, y))
+    if (update_circle_collision(index, x, y)) {
         return;
+    }
 #endif // CHECK_COLLISION
        
     if (x - circle->radius < 0 || x + circle->radius > width) {
@@ -197,19 +212,18 @@ void update_circle_pos(int index, float dt)
 void draw_circle_move(int index, float dt) 
 {
     Circle *circle = &circles[index];
-    DrawCircleGradient(circle->pos.x, circle->pos.y, circle->radius, GREEN, YELLOW);
-    
-    update_circle_pos(index, dt); 
+    DrawCircleV(circle->pos, circle->radius, YELLOW);
+    //DrawCircleGradient(circle->pos.x, circle->pos.y, circle->radius, GREEN, YELLOW);
 
-    bool hoverover = CheckCollisionPointCircle(GetMousePosition(), circle->pos, circle->radius);
-
-    if (hoverover) {
-        circle->radius += dt*10;
-        if (circle->radius > CIRCLE_RADIUS_MAX + 10) {
+    if (CheckCollisionPointCircle(GetMousePosition(), circle->pos, circle->radius)) {
+        circle->radius += dt*20;
+        if (circle->radius > circle_radius_max + 10) {
             circle->state = POP;
             circle->timer = 0.0f;
         } 
     }
+    
+    update_circle_pos(index, dt); 
 }
 
 
@@ -217,7 +231,9 @@ void draw_circle_pop(int index, float dt) {
     Circle *circle = &circles[index];
     circle->timer += dt;
     float radius = circle->radius * circle->timer / 0.25f; 
-    DrawRing(circle->pos, circle->radius, radius, 0, 360, 360, YELLOW);
+    DrawCircleV(circle->pos, circle->radius, YELLOW);
+    DrawCircleV(circle->pos, radius, WHITE);
+    //DrawRing(circle->pos, circle->radius, radius, 0, 360, 360, YELLOW);
     
     update_circle_pos(index, dt); 
     
@@ -243,8 +259,8 @@ void draw_circle_born(int index, float dt)
     circle->timer += dt;
     float value = circle->timer / 0.75f; 
     float radius = circle->radius * value; 
-    DrawCircleGradient(circle->pos.x, circle->pos.y, radius, GREEN, YELLOW);
-    //DrawCircleV(circle->pos, radius, YELLOW);
+    //DrawCircleGradient(circle->pos.x, circle->pos.y, radius, GREEN, YELLOW);
+    DrawCircleV(circle->pos, radius, YELLOW);
     
     update_circle_pos(index, dt); 
     
@@ -253,12 +269,83 @@ void draw_circle_born(int index, float dt)
     }
 }
 
-
-int main()
+/*
+void procees_slider(int cx, int cy)
 {
-    srand(time(NULL));
+    static bool down = false;
+    Vector2 center = {.x = cx, .y = cy};
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+        if (CheckCollisionPointCircle(GetMousePosition(), center, 6)) {
+            down = true;
+        }
+    }
+    if (down) {
+    }
+}
+*/
 
-    SetTraceLogLevel(LOG_WARNING);
+/*
+void draw_menu(void) {
+    
+    int x = 10, y = 10;
+    // Draw radius slidebar controls   
+    Rectangle max_radius_slider = {x, y, 200, 10};
+    int MAX_RADIUS_SLIDEBAR_RADIUS = 6;
+    int cx = x + Lerp(0.0f, 100.0f, (float)circle_radius_max/100);
+    int cy = y + 10/2;
+    DrawRectangleRec(max_radius_slider, RED);
+    DrawCircle(cx, cy, MAX_RADIUS_SLIDEBAR_RADIUS, BLACK); 
+    procees_slider(cx, cy);
+}
+*/
+
+void game_frame(void)
+{
+    BeginDrawing();
+    float dt = GetFrameTime();
+    height = GetScreenHeight();
+    width = GetScreenWidth();
+
+    Vector2 mouse = GetMousePosition();
+
+    ClearBackground(RAYWHITE);
+    for (int i = 0; i < CIRCLES; ++i) {
+        switch (circles[i].state) {
+            case POP: draw_circle_pop(i, dt); break;
+            case VANISH: draw_circle_vanish(i, dt); break;
+            case BORN: draw_circle_born(i, dt); break;
+            case MOVE: draw_circle_move(i, dt); break; 
+            default: break;
+        }
+        
+        //if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        //    if (CheckCollisionPointCircle(mouse, circles[i].pos, circles[i].radius))
+        //    print_circle(i); 
+        //} 
+    }
+    
+    Vector2 mouse_delta = GetMouseDelta();
+    if (mouse_delta.x != 0 || mouse_delta.y != 0) rand_particle(mouse); 
+    draw_particles(dt);
+   
+    if (IsKeyPressed(KEY_SPACE)) {
+        is_circles_move = !is_circles_move;
+    }
+    //draw_menu();
+    EndDrawing();
+}
+
+
+void raylib_js_set_entry(void (*entry)(void));
+
+
+int main(void)
+{
+    #ifndef PLATFORM_WEB
+        srand(time(NULL));
+        SetTraceLogLevel(LOG_WARNING);
+    #endif
+
     InitWindow(WIDTH, HEIGHT, "Balls");
     //InitWindow(0, 0, "Balls");
     SetTargetFPS(60);
@@ -267,39 +354,15 @@ int main()
 
     init_circles();
     init_particles();
+
+#ifdef PLATFORM_WEB
+    raylib_js_set_entry(game_frame);
+#else 
     while (!WindowShouldClose()) {
-        BeginDrawing();
-            float dt = GetFrameTime();
-            height = GetScreenHeight();
-            width = GetScreenWidth();
-
-            Vector2 mouse = GetMousePosition();
-
-            ClearBackground(RAYWHITE);
-            for (int i = 0; i < CIRCLES; ++i) {
-                switch (circles[i].state) {
-                    case POP: draw_circle_pop(i, dt); break;
-                    case VANISH: draw_circle_vanish(i, dt); break;
-                    case BORN: draw_circle_born(i, dt); break;
-                    case MOVE: draw_circle_move(i, dt); break; 
-                    default: break;
-                }
-                
-                if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                    if (CheckCollisionPointCircle(mouse, circles[i].pos, circles[i].radius))
-                    print_circle(i); 
-                } 
-            }
-            
-            Vector2 mouse_delta = GetMouseDelta();
-            if (mouse_delta.x != 0 || mouse_delta.y != 0) rand_particle(mouse);
-            draw_particles(dt);
-           
-            if (IsKeyPressed(KEY_SPACE)) {
-                is_circles_move = !is_circles_move;
-            }
-        EndDrawing();
+            game_frame();
     }
     CloseWindow();
+#endif
+
     return 0;
 }
