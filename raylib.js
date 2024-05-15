@@ -198,6 +198,51 @@ class RaylibJs {
         this.ctx.fill();
     }
 
+    DrawCircleLinesV(center_ptr, radius, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [x, y] = new Float32Array(buffer, center_ptr, 2);
+        const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        const color = color_hex_unpacked(r, g, b, a);
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, radius, 0, 2*Math.PI, false);
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+    }
+
+    DrawRing(center_ptr, inner_radius, outer_radius, start_angle, end_agnle, segments, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [x, y] = new Float32Array(buffer, center_ptr, 2);
+        const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        const color = color_hex_unpacked(r, g, b, a); 
+        const radius_delta = outer_radius - inner_radius;
+        const radius = inner_radius + radius_delta/2; 
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, radius, start_angle, end_agnle, false);
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = radius_delta;
+        this.ctx.stroke();
+    }
+
+
+    DrawCircleGradient(x, y, radius, color_ptr, color2_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        const [r2, g2, b2, a2] = new Uint8Array(buffer, color2_ptr, 4);
+        const color = color_hex_unpacked(r, g, b, a); 
+        const color2 = color_hex_unpacked(r2, g2, b2, a2); 
+        // Create a radial gradient
+        // The inner circle is at x=110, y=90, with radius=30
+        // The outer circle is at x=100, y=100, with radius=70
+        const gradient = this.ctx.createRadialGradient(x, y, radius/2, x, y, radius);
+        gradient.addColorStop(0, color);
+        gradient.addColorStop(0.5, color2);
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, radius, 0, Math.PI*2, false);
+        this.ctx.fillStyle = gradient;
+        this.ctx.fill();
+    } 
+
     ClearBackground(color_ptr) {
         this.ctx.fillStyle = getColorFromMemory(this.wasm.instance.exports.memory.buffer, color_ptr);
         this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
@@ -281,6 +326,18 @@ class RaylibJs {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [r, g, b, _] = new Uint8Array(buffer, color_ptr, 4);
         const newA = Math.max(0, Math.min(255, 255.0*alpha));
+        new Uint8Array(buffer, result_ptr, 4).set([r, g, b, newA]);
+    }
+
+    ColorAlpha(result_ptr, color_ptr, alpha) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [r, g, b, _] = new Uint8Array(buffer, color_ptr, 4);
+
+        if (alpha < 0.0) alpha = 0.0;
+        else if (alpha > 1.0) alpha = 1.0;
+
+        const newA = 255*alpha;
+
         new Uint8Array(buffer, result_ptr, 4).set([r, g, b, newA]);
     }
 
@@ -376,7 +433,7 @@ class RaylibJs {
         result[0] = metrics.width;
         result[1] = fontSize;
     }
-
+    
     DrawTextEx(font, text_ptr, position_ptr, fontSize, spacing, tint_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);

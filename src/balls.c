@@ -2,13 +2,17 @@
 #include "raymath.h"
 
 #ifndef PLATFORM_WEB
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <time.h>
+
 #else
-    #define RAND_MAX 2147483647 
-    int rand(void);
+
+#define RAND_MAX 2147483647 
+int rand(void);
+
 #endif // PLATFORM_WEB
 
 
@@ -19,6 +23,10 @@
 #define HEIGHT 800
 
 //#define COLLISION
+
+
+static Color colors[] = {RED, YELLOW, GREEN, PURPLE, BROWN, PINK, ORANGE, GOLD, BLUE, VIOLET};
+static int colors_count = sizeof(colors)/sizeof(*colors);
 
 
 typedef enum {
@@ -35,9 +43,10 @@ typedef struct {
     float radius;
     CircleState state;
     float timer;
+    Color color;
 } Circle;
 
-static int circle_radius_max = 25;
+static int circle_radius_max = 50;
 static int circle_radius_min = 15;
 
 static Circle circles[CIRCLES] = {0};
@@ -47,8 +56,10 @@ static bool is_circles_move = true;
 typedef struct {
     Vector2 pos;
     Vector2 velocity;
+    float max_lifetime;
     float lifetime;
     float radius;
+    Color color;
 } Particle;
 
 static Particle particles[PARTICLES];
@@ -83,9 +94,10 @@ void rand_particle(Vector2 pos)
     particle->pos = pos;
     particle->radius = 1 + rand() % 3;
     particle->lifetime = (float)rand() / (float)RAND_MAX;
+    particle->max_lifetime = particle->lifetime; 
     particle->velocity.x = -100 + rand() % 200;
     particle->velocity.y = -100 + rand() % 200;
-
+    particle->color = colors[rand() % colors_count];
 }
 
 
@@ -114,7 +126,8 @@ void draw_particles(float dt)
     for (int i = 0; i < PARTICLES; ++i) {
         Particle *particle = &particles[i];
         if (particle->lifetime <= 0) continue;
-        DrawCircleV(particle->pos, particle->radius, RED);
+        float value = particle->lifetime / particle->max_lifetime;
+        DrawCircleV(particle->pos, particle->radius, ColorAlpha(particle->color, value));
         update_particle_pos(i, dt);
         particle->lifetime -= dt;
     }
@@ -133,6 +146,7 @@ void rand_circle(int index)
     circles[index].velocity.x = -150 + rand() % 300;
     circles[index].velocity.y = -150 + rand() % 300;
     circles[index].timer = 0.0f;
+    circles[index].color = colors[rand() % colors_count];
 }
 
 void init_circles(void)
@@ -212,8 +226,9 @@ void update_circle_pos(int index, float dt)
 void draw_circle_move(int index, float dt) 
 {
     Circle *circle = &circles[index];
-    DrawCircleV(circle->pos, circle->radius, YELLOW);
-    //DrawCircleGradient(circle->pos.x, circle->pos.y, circle->radius, GREEN, YELLOW);
+    //DrawCircleV(circle->pos, circle->radius, ColorAlpha(circle->color, 0.5f));
+    DrawCircleGradient(circle->pos.x, circle->pos.y, circle->radius, circle->color, ColorAlpha(circle->color, 0.5));
+    DrawCircleLinesV(circle->pos, circle->radius, BLACK);
 
     if (CheckCollisionPointCircle(GetMousePosition(), circle->pos, circle->radius)) {
         circle->radius += dt*20;
@@ -231,9 +246,8 @@ void draw_circle_pop(int index, float dt) {
     Circle *circle = &circles[index];
     circle->timer += dt;
     float radius = circle->radius * circle->timer / 0.25f; 
-    DrawCircleV(circle->pos, circle->radius, YELLOW);
-    DrawCircleV(circle->pos, radius, WHITE);
-    //DrawRing(circle->pos, circle->radius, radius, 0, 360, 360, YELLOW);
+    DrawRing(circle->pos, radius, circle->radius, 0, 360, 360, ColorAlpha(circle->color, 0.5f));
+    DrawCircleLinesV(circle->pos, circle->radius, BLACK);
     
     update_circle_pos(index, dt); 
     
@@ -259,8 +273,9 @@ void draw_circle_born(int index, float dt)
     circle->timer += dt;
     float value = circle->timer / 0.75f; 
     float radius = circle->radius * value; 
-    //DrawCircleGradient(circle->pos.x, circle->pos.y, radius, GREEN, YELLOW);
-    DrawCircleV(circle->pos, radius, YELLOW);
+    DrawCircleGradient(circle->pos.x, circle->pos.y, radius, circle->color, ColorAlpha(circle->color, 0.5f));
+    //DrawCircleV(circle->pos, radius, ColorAlpha(circle->color, 0.5f));
+    DrawCircleLinesV(circle->pos, radius, BLACK);
     
     update_circle_pos(index, dt); 
     
@@ -344,6 +359,7 @@ int main(void)
     #ifndef PLATFORM_WEB
         srand(time(NULL));
         SetTraceLogLevel(LOG_WARNING);
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
     #endif
 
     InitWindow(WIDTH, HEIGHT, "Balls");
