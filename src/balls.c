@@ -1,18 +1,21 @@
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
+#include <time.h>
 
 #include "raylib.h"
 #include "raymath.h"
 
 
-#define CIRCLES 50
+#define CIRCLES 25
 #define PARTICLES 50
 
 #define WIDTH 800
 #define HEIGHT 600
 #define CIRCLE_RADIUS_MAX 25
 #define CIRCLE_RADIUS_MIN 15
+
+#define COLLISION
 
 typedef enum {
     BORN = 0,
@@ -145,19 +148,43 @@ void print_circle(int index)
 }
 
 
+bool update_circle_collision(int index, float x, float y)
+{
+    Vector2 vec = {-1.0f, -1.0f};
+    Vector2 pos = {.x = x, .y = y};
+    float radius = circles[index].radius;
+    for (int i = 0; i < CIRCLES; ++i) {
+        if (i == index) continue;
+        Circle *circle = &circles[i];
+        if (circle->state != MOVE) continue;
+        if (CheckCollisionCircles(pos, radius, circle->pos, circle->radius)) {
+            circle->velocity = Vector2Multiply(circle->velocity, vec);  
+            circles[index].velocity = Vector2Multiply(circles[index].velocity, vec);  
+            return true;
+        }
+    }
+    return false;
+}
+
 void update_circle_pos(int index, float dt) 
 {
     if (!is_circles_move) return;
 
     Circle *circle = &circles[index];
     float x = circle->pos.x + circle->velocity.x*dt;
+    float y = circle->pos.y + circle->velocity.y*dt;
+    
+#ifdef COLLISION 
+    if (update_circle_collision(index, x, y))
+        return;
+#endif // CHECK_COLLISION
+       
     if (x - circle->radius < 0 || x + circle->radius > width) {
         circle->velocity.x *= -1;
     } else {
         circle->pos.x = x;
     }
 
-    float y = circle->pos.y + circle->velocity.y*dt;
     if (y - circle->radius < 0 || y + circle->radius > height) {
         circle->velocity.y *= -1;
     } else {
@@ -189,12 +216,12 @@ void draw_circle_move(int index, float dt)
 void draw_circle_pop(int index, float dt) {
     Circle *circle = &circles[index];
     circle->timer += dt;
-    float radius = circle->radius * circle->timer / 0.5f; 
+    float radius = circle->radius * circle->timer / 0.25f; 
     DrawRing(circle->pos, circle->radius, radius, 0, 360, 360, YELLOW);
     
     update_circle_pos(index, dt); 
     
-    if (circle->timer > 0.5f) {
+    if (circle->timer > 0.25f) {
         rand_circle(index);
         circle->state = VANISH;
     }
@@ -229,9 +256,11 @@ void draw_circle_born(int index, float dt)
 
 int main()
 {
+    srand(time(NULL));
+
     SetTraceLogLevel(LOG_WARNING);
-    //InitWindow(WIDTH, HEIGHT, "Balls");
-    InitWindow(0, 0, "Balls");
+    InitWindow(WIDTH, HEIGHT, "Balls");
+    //InitWindow(0, 0, "Balls");
     SetTargetFPS(60);
     width = GetScreenWidth();
     height = GetScreenHeight();
