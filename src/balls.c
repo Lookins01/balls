@@ -226,9 +226,7 @@ void update_circle_pos(int index, float dt)
 void draw_circle_move(int index, float dt) 
 {
     Circle *circle = &circles[index];
-    //DrawCircleV(circle->pos, circle->radius, ColorAlpha(circle->color, 0.5f));
     DrawCircleGradient(circle->pos.x, circle->pos.y, circle->radius, circle->color, ColorAlpha(circle->color, 0.5));
-    DrawCircleLinesV(circle->pos, circle->radius, BLACK);
 
     if (CheckCollisionPointCircle(GetMousePosition(), circle->pos, circle->radius)) {
         circle->radius += dt*20;
@@ -247,7 +245,6 @@ void draw_circle_pop(int index, float dt) {
     circle->timer += dt;
     float radius = circle->radius * circle->timer / 0.25f; 
     DrawRing(circle->pos, radius, circle->radius, 0, 360, 360, ColorAlpha(circle->color, 0.5f));
-    DrawCircleLinesV(circle->pos, circle->radius, BLACK);
     
     update_circle_pos(index, dt); 
     
@@ -274,8 +271,6 @@ void draw_circle_born(int index, float dt)
     float value = circle->timer / 0.75f; 
     float radius = circle->radius * value; 
     DrawCircleGradient(circle->pos.x, circle->pos.y, radius, circle->color, ColorAlpha(circle->color, 0.5f));
-    //DrawCircleV(circle->pos, radius, ColorAlpha(circle->color, 0.5f));
-    DrawCircleLinesV(circle->pos, radius, BLACK);
     
     update_circle_pos(index, dt); 
     
