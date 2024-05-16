@@ -27,7 +27,8 @@ int rand(void);
 // -------------------------------------------------------------
 
 #define CIRCLES 50 
-#define PARTICLES 50
+#define PARTICLES 25
+#define MOUSE_PARTICLES 100
 #define BG_POINTS 25
 
 #define WIDTH 1500
@@ -59,7 +60,7 @@ typedef struct {
     Color color;
 } Particle;
 
-static Particle particles[PARTICLES];
+static Particle particles[MOUSE_PARTICLES];
 
 
 typedef enum {
@@ -87,9 +88,9 @@ static Circle circles[CIRCLES] = {0};
 static bool is_circles_move = true;
 
 
-void init_particles(void)
+void init_mouse_particles(void)
 {
-    for (int i = 0; i < PARTICLES; ++i) {
+    for (int i = 0; i < MOUSE_PARTICLES; ++i) {
         particles[i].lifetime = 0.0f;
     }
 }
@@ -97,14 +98,14 @@ void init_particles(void)
 
 int get_free_particle_index(void)
 {
-    for (int i = 0; i < PARTICLES; ++i) {
+    for (int i = 0; i < MOUSE_PARTICLES; ++i) {
         if (particles[i].lifetime <= 0.0f) return i;
     }
    return -1; 
 }
 
 
-void rand_particle(Vector2 pos)
+void rand_mouse_particle(Vector2 pos)
 {
     int index = get_free_particle_index();
     if (index < 0) return;
@@ -119,8 +120,9 @@ void rand_particle(Vector2 pos)
 }
 
 
-void update_particle_pos(Particle particles[PARTICLES], int index, float dt)
+void update_particle_pos(Particle particles[], int particles_size, int index, float dt)
 {
+    if (index < 0 || index >= particles_size) return;
     Particle *particle = &particles[index];
 
     float x = particle->pos.x + particle->velocity.x*dt;
@@ -139,14 +141,14 @@ void update_particle_pos(Particle particles[PARTICLES], int index, float dt)
 }
 
 
-void draw_particles(Particle particles[PARTICLES], float dt)
+void draw_particles(Particle particles[], int particles_count, float dt)
 {
-    for (int i = 0; i < PARTICLES; ++i) {
+    for (int i = 0; i < particles_count; ++i) {
         Particle *particle = &particles[i];
         if (particle->lifetime <= 0) continue;
         float value = particle->lifetime / particle->max_lifetime;
         DrawCircleV(particle->pos, particle->radius, ColorAlpha(particle->color, value));
-        update_particle_pos(particles, i, dt);
+        update_particle_pos(particles, particles_count, i, dt);
         particle->lifetime -= dt;
     }
 }
@@ -211,7 +213,6 @@ void print_circle(int index)
 
 bool update_circle_collision(int index, float x, float y)
 {
-    Vector2 vec = {-1.0f, -1.0f};
     Vector2 pos = {.x = x, .y = y};
     float radius = circles[index].radius;
     for (int i = 0; i < CIRCLES; ++i) {
@@ -231,8 +232,8 @@ bool update_circle_collision(int index, float x, float y)
             } 
 #ifdef COLLISION  
             else {
-                circle->velocity = Vector2Multiply(circle->velocity, vec);  
-                circles[index].velocity = Vector2Multiply(circles[index].velocity, vec);  
+                circle->velocity = Vector2Negate(circle->velocity);  
+                circles[index].velocity = Vector2Negate(circles[index].velocity);  
                 return true;
             }
 #endif
@@ -303,7 +304,7 @@ void draw_circle_pop(int index, float dt) {
     circle->timer += dt;
     //float radius = circle->radius * circle->timer / 1.0f; 
     //DrawRing(circle->pos, radius, circle->radius, 0, 360, 360, ColorAlpha(circle->color, 0.5f));
-    draw_particles(circle->particles, dt); 
+    draw_particles(circle->particles, PARTICLES, dt); 
 
     //update_circle_pos(index, dt); 
     
@@ -417,8 +418,8 @@ void game_frame(void)
     }
     
     Vector2 mouse_delta = GetMouseDelta();
-    if (mouse_delta.x != 0 || mouse_delta.y != 0) rand_particle(mouse); 
-    draw_particles(particles, dt);
+    if (mouse_delta.x != 0 || mouse_delta.y != 0) rand_mouse_particle(mouse); 
+    draw_particles(particles, MOUSE_PARTICLES, dt);
    
     if (IsKeyPressed(KEY_SPACE)) {
         is_circles_move = !is_circles_move;
@@ -446,7 +447,7 @@ int main(void)
     height = GetScreenHeight();
 
     init_circles();
-    init_particles();
+    init_mouse_particles();
 
 #ifdef PLATFORM_WEB
     raylib_js_set_entry(game_frame);
