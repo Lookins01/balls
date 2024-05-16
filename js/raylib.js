@@ -270,8 +270,6 @@ class RaylibJs {
         const color = color_hex_unpacked(r, g, b, a); 
         const color2 = color_hex_unpacked(r2, g2, b2, a2); 
         // Create a radial gradient
-        // The inner circle is at x=110, y=90, with radius=30
-        // The outer circle is at x=100, y=100, with radius=70
         const gradient = this.ctx.createRadialGradient(x, y, radius/2, x, y, radius);
         gradient.addColorStop(0, color);
         gradient.addColorStop(0.5, color2);
