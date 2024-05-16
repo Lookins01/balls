@@ -56,16 +56,16 @@
         }
         @font-face {
             font-family: grixel;
-            src: url(assets/fonts/acme_7_wide_xtnd.woff);
+            src: url(./assets/fonts/acme_7_wide_xtnd.woff);
         }
     </style>
-    <script src="/js/raylib.js"></script>
+    <script src="./js/raylib.js"></script>
 </head>
 <body>
     <canvas id="game"></canvas>
 
     <div id="full-screen-button" onclick="open_fullscreen()">
-        <img src="/assets/icons/full-screen.svg" title="Open game in full screen" alt="full screen icon" />
+        <img src="./assets/icons/full-screen.svg" title="Open game in full screen" alt="full screen icon" />
     </div>
 
     <script>
@@ -93,7 +93,7 @@
                 }
             }
         }
-        const wasm_path = "wasm/balls.wasm"; 
+        const wasm_path = "./wasm/balls.wasm";
 
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";
