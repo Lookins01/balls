@@ -92,12 +92,17 @@ class RaylibJs {
         const mouseUp = (e) => {
             this.currentMouseButtonState.delete(glfwMouseButtonMapping[e.button]);
         };
+        const fullScreen = (e) => {
+            this.ctx.canvas.width  = window.innerWidth;
+            this.ctx.canvas.height = window.innerHeight;
+        };
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
         window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
         window.addEventListener("mousedown", mouseDown);
         window.addEventListener("mouseup", mouseUp);
+        this.ctx.canvas.addEventListener("fullscreenchange", fullScreen);
 
 
         this.wasm.instance.exports.main();
@@ -486,6 +491,35 @@ class RaylibJs {
         this.ctx.fillStyle = tint;
         this.ctx.font = fontSize+"px myfont";
         this.ctx.fillText(text, posX, posY + fontSize);
+    }
+    
+    Vector2Distance(vector1_ptr, vector2_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [v1_x, v1_y] = new Float32Array(buffer, vector1_ptr, 2);
+        const [v2_x, v2_y] = new Float32Array(buffer, vector2_ptr, 2);
+
+        return Math.sqrt((v1_x - v2_x)*(v1_x - v2_x) + (v1_y - v2_y)*(v1_y - v2_y));
+    }
+    
+    ColorBrightness(result_ptr, color_ptr, factor) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        var [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+
+        if (factor > 1.0) factor = 1.0;
+        else if (factor < -1.0) factor = -1.0;
+
+        if (factor < 0.0) {
+            factor = 1.0 + factor;
+            r *= factor;
+            g *= factor;
+            b *= factor;
+        } else {
+            r = (255 - r)*factor + r;
+            g = (255 - g)*factor + g;
+            b = (255 - b)*factor + b;
+        }
+
+        new Uint8Array(buffer, result_ptr, 4).set([r, g, b, a]);
     }
 
     raylib_js_set_entry(entry) {

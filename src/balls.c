@@ -15,20 +15,38 @@ int rand(void);
 
 #endif // PLATFORM_WEB
 
+// Colors
+// ------------------------------------------------------------
+#define GRUVBOX_RED     CLITERAL(Color){0xFB, 0x49, 0x34, 0xFF}
+#define GRUVBOX_GREEN   CLITERAL(Color){0xB8, 0xbb, 0x26, 0xFF}
+#define GRUVBOX_YELLOW  CLITERAL(Color){0xFA, 0xBD, 0x2F, 0xFF}
+#define GRUVBOX_BLUE    CLITERAL(Color){0x83, 0xA5, 0x98, 0xFF}
+#define GRUVBOX_PURPLE  CLITERAL(Color){0xD3, 0x86, 0x9B, 0xFF}
+#define GRUVBOX_AQUA    CLITERAL(Color){0x8E, 0xC0, 0x7C, 0xFF}
+#define GRUVBOX_ORANGE  CLITERAL(Color){0xFE, 0x80, 0x19, 0xFF}
+// -------------------------------------------------------------
 
 #define CIRCLES 50 
 #define PARTICLES 50
+#define BG_POINTS 25
 
 #define WIDTH 1500
 #define HEIGHT 800
 
 //#define COLLISION
 
+
+static int width = WIDTH;
+static int height = HEIGHT;
+
+
 // Settings
+// --------------------------------------
 static bool pop_on_collision = true;
+// --------------------------------------
 
-
-static Color colors[] = {RED, YELLOW, GREEN, PURPLE, BROWN, PINK, ORANGE, GOLD, BLUE, VIOLET};
+static Color colors[] = {GRUVBOX_RED, GRUVBOX_GREEN, GRUVBOX_YELLOW, GRUVBOX_BLUE, GRUVBOX_PURPLE, GRUVBOX_AQUA, GRUVBOX_ORANGE};
+//static Color colors[] = {RED, YELLOW, GREEN, PURPLE, BROWN, PINK, ORANGE, GOLD, BLUE, VIOLET};
 static int colors_count = sizeof(colors)/sizeof(*colors);
 
 
@@ -67,10 +85,6 @@ static int circle_radius_min = 15;
 
 static Circle circles[CIRCLES] = {0};
 static bool is_circles_move = true;
-
-
-static int width;
-static int height;
 
 
 void init_particles(void)
@@ -205,9 +219,23 @@ bool update_circle_collision(int index, float x, float y)
         Circle *circle = &circles[i];
         if (circle->state != MOVE) continue;
         if (CheckCollisionCircles(pos, radius, circle->pos, circle->radius)) {
-            circle->velocity = Vector2Multiply(circle->velocity, vec);  
-            circles[index].velocity = Vector2Multiply(circles[index].velocity, vec);  
-            return true;
+            if (pop_on_collision) {
+                circle->state = POP;
+                circle->timer = 0.0f;
+                init_circle_particles(i);
+
+                circles[index].state = POP;
+                circles[index].timer = 0.0f;
+                init_circle_particles(index);
+                return true;
+            } 
+#ifdef COLLISION  
+            else {
+                circle->velocity = Vector2Multiply(circle->velocity, vec);  
+                circles[index].velocity = Vector2Multiply(circles[index].velocity, vec);  
+                return true;
+            }
+#endif
         }
     }
     return false;
@@ -221,11 +249,9 @@ void update_circle_pos(int index, float dt)
     float x = circle->pos.x + circle->velocity.x*dt;
     float y = circle->pos.y + circle->velocity.y*dt;
     
-#ifdef COLLISION 
     if (update_circle_collision(index, x, y)) {
         return;
     }
-#endif // CHECK_COLLISION
        
     if (x - circle->radius < 0 || x + circle->radius > width) {
         if (pop_on_collision) {
@@ -260,7 +286,7 @@ void draw_circle_move(int index, float dt)
     DrawCircleGradient(circle->pos.x, circle->pos.y, circle->radius, circle->color, ColorAlpha(circle->color, 0.5));
 
     if (CheckCollisionPointCircle(GetMousePosition(), circle->pos, circle->radius)) {
-        circle->radius += dt*20;
+        circle->radius += dt*50;
         if (circle->radius > circle_radius_max + 10) {
             circle->state = POP;
             init_circle_particles(index);
@@ -344,11 +370,16 @@ void draw_menu(void)
     procees_slider(cx, cy);
 */
     Rectangle pop_on_collision_rec = {x, y, 20, 20};
-    Color color = pop_on_collision ? RED : BLACK;
+    Color color = BLACK; //pop_on_collision ? RED : BLACK;
     int pop_on_collision_text_x = pop_on_collision_rec.x + 10 + pop_on_collision_rec.width;
     int pop_on_collision_text_y = pop_on_collision_rec.y + pop_on_collision_rec.height/2 - text_size/2;
     DrawRectangleRec(pop_on_collision_rec, color);
     DrawText("Pop on collision", pop_on_collision_text_x, pop_on_collision_text_y, text_size, RED);
+    if (pop_on_collision) {
+        DrawRectangle(pop_on_collision_rec.x+5, pop_on_collision_rec.y+5, pop_on_collision_rec.width-10, pop_on_collision_rec.height-10, GREEN);
+    } else {
+        DrawRectangle(pop_on_collision_rec.x+5, pop_on_collision_rec.y+5, pop_on_collision_rec.width-10, pop_on_collision_rec.height-10, RED);
+    }
 
     if (CheckCollisionPointRec(mouse, pop_on_collision_rec) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         pop_on_collision = !pop_on_collision;
@@ -356,6 +387,8 @@ void draw_menu(void)
 
     
 }
+
+
 
 
 void game_frame(void)
@@ -366,7 +399,7 @@ void game_frame(void)
     width = GetScreenWidth();
 
     Vector2 mouse = GetMousePosition();
-
+    
     ClearBackground(RAYWHITE);
     for (int i = 0; i < CIRCLES; ++i) {
         switch (circles[i].state) {
